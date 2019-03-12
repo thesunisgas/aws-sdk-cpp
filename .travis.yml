@@ -1,0 +1,13 @@
+language: cpp
+os: osx
+osx_image: xcode10
+compiler: clang
+script:
+- mkdir build
+- cd build
+- cmake ..
+- make -j 8
+addons:
+  homebrew:
+    packages:
+    - awscli
