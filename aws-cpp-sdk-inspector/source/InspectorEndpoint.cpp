@@ -28,8 +28,6 @@ namespace InspectorEndpoint
 {
   static const int CN_NORTH_1_HASH = Aws::Utils::HashingUtils::HashString("cn-north-1");
   static const int CN_NORTHWEST_1_HASH = Aws::Utils::HashingUtils::HashString("cn-northwest-1");
-  static const int US_ISO_EAST_1_HASH = Aws::Utils::HashingUtils::HashString("us-iso-east-1");
-  static const int US_ISOB_EAST_1_HASH = Aws::Utils::HashingUtils::HashString("us-isob-east-1");
 
 
   Aws::String ForRegion(const Aws::String& regionName, bool useDualStack)
@@ -44,23 +42,11 @@ namespace InspectorEndpoint
       ss << "dualstack.";
     }
 
-    ss << regionName;
+    ss << regionName << ".amazonaws.com";
 
     if (hash == CN_NORTH_1_HASH || hash == CN_NORTHWEST_1_HASH)
     {
-      ss << ".amazonaws.com.cn";
-    }
-    else if (hash == US_ISO_EAST_1_HASH)
-    {
-      ss << ".c2s.ic.gov";
-    }
-    else if (hash == US_ISOB_EAST_1_HASH)
-    {
-      ss << ".sc2s.sgov.gov";
-    }
-    else
-    {
-      ss << ".amazonaws.com";
+      ss << ".cn";
     }
 
     return ss.str();
