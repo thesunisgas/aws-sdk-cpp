@@ -217,8 +217,8 @@ bool WinSyncHttpClient::BuildSuccessResponse(const std::shared_ptr<HttpRequest>&
         read = 0;
 
         bool success = ContinueRequest(*request);
-
-        while (DoReadData(hHttpRequest, body, bodySize, read) && read > 0 && success)
+        bool readDataSuccess = DoReadData(hHttpRequest, body, bodySize, read);
+        while (readDataSuccess && read > 0 && success)
         {
             response->GetResponseBody().write(body, read);
             if (read > 0)
@@ -236,9 +236,17 @@ bool WinSyncHttpClient::BuildSuccessResponse(const std::shared_ptr<HttpRequest>&
             }
 
             success = success && ContinueRequest(*request) && IsRequestProcessingEnabled();
+            readDataSuccess = DoReadData(hHttpRequest, body, bodySize, read);
         }
 
-        if (success && response->HasHeader(Aws::Http::CONTENT_LENGTH_HEADER))
+        if (!readDataSuccess) 
+        {
+            success = false;
+            response->SetClientErrorType(CoreErrors::NETWORK_CONNECTION);
+            response->SetClientErrorMessage("DoReadData failed to read data from response.");
+            AWS_LOGSTREAM_ERROR(GetLogTag(), "DoReadData failed to read data from response with error code: " << GetLastError());
+        } 
+        else if (success && response->HasHeader(Aws::Http::CONTENT_LENGTH_HEADER))
         {
             const Aws::String& contentLength = response->GetHeader(Aws::Http::CONTENT_LENGTH_HEADER);
             AWS_LOGSTREAM_TRACE(GetLogTag(), "Response content-length header: " << contentLength);
@@ -288,11 +296,13 @@ std::shared_ptr<HttpResponse> WinSyncHttpClient::MakeRequest(const std::shared_p
         }
 
         connection = m_connectionPoolMgr->AcquireConnectionForHost(uriRef.GetAuthority(), uriRef.GetPort());
+        OverrideOptionsOnConnectionHandle(connection);
         AWS_LOGSTREAM_DEBUG(GetLogTag(), "Acquired connection " << connection);
 
         hHttpRequest = AllocateWindowsHttpRequest(request, connection);
 
         AddHeadersToRequest(request, hHttpRequest);
+        OverrideOptionsOnRequestHandle(hHttpRequest);
         if (DoSendRequest(hHttpRequest) && StreamPayloadToRequest(request, hHttpRequest, writeLimiter))
         {
             success = BuildSuccessResponse(request, response, hHttpRequest, readLimiter);
